@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>J.A.R.V.I.S.</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#c8960c;--gold-b:#f0b429;--gold-dim:rgba(200,150,12,0.22);
+  --gold-glow:rgba(240,180,41,0.45);--cyan:#00d4ff;--cyan-dim:rgba(0,212,255,0.15);
+  --red:#c0392b;--bg:#07090f;--panel:rgba(8,12,22,0.94);
+  --border:rgba(200,150,12,0.2);--text:#d8cfc0;--muted:#5a5448;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;height:100vh;width:100vw;overflow:hidden;display:flex;flex-direction:column;}
+
+.hex-bg{position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpolygon points='28,2 54,16 54,44 28,58 2,44 2,16' fill='none' stroke='rgba(200,150,12,0.06)' stroke-width='0.8'/%3E%3Cpolygon points='28,52 54,66 54,94 28,108 2,94 2,66' fill='none' stroke='rgba(200,150,12,0.06)' stroke-width='0.8'/%3E%3C/svg%3E");pointer-events:none;z-index:0;}
+.scanlines{position:fixed;inset:0;background:linear-gradient(transparent 50%,rgba(0,0,0,0.03) 50%);background-size:100% 3px;pointer-events:none;z-index:6;}
+.bracket{position:fixed;width:24px;height:24px;border-color:var(--gold);border-style:solid;z-index:8;opacity:0.5;}
+.bracket.tl{top:10px;left:10px;border-width:2px 0 0 2px;}
+.bracket.tr{top:10px;right:10px;border-width:2px 2px 0 0;}
+.bracket.bl{bottom:10px;left:10px;border-width:0 0 2px 2px;}
+.bracket.br{bottom:10px;right:10px;border-width:0 2px 2px 0;}
+
+/* Boot */
+#boot{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;transition:opacity 1s ease,visibility 1s ease;}
+#boot.gone{opacity:0;visibility:hidden;pointer-events:none;}
+.boot-logo{font-family:'Orbitron',monospace;font-size:3rem;font-weight:900;color:var(--gold-b);letter-spacing:12px;text-shadow:0 0 40px var(--gold-glow);margin-bottom:8px;}
+.boot-sub{font-family:'Share Tech Mono',monospace;font-size:0.68rem;color:var(--muted);letter-spacing:5px;margin-bottom:32px;}
+.boot-track{width:300px;height:2px;background:rgba(200,150,12,0.12);border-radius:1px;margin-bottom:18px;}
+.boot-bar{height:100%;width:0;background:var(--gold-b);border-radius:1px;box-shadow:0 0 10px var(--gold-glow);transition:width 0.25s ease;}
+.boot-log{font-family:'Share Tech Mono',monospace;font-size:0.72rem;color:var(--muted);display:flex;flex-direction:column;gap:4px;width:300px;min-height:120px;}
+.blog-row{display:flex;gap:8px;align-items:center;}
+.bs{font-size:0.65rem;padding:1px 5px;border-radius:2px;flex-shrink:0;}
+.bs.ok{color:#2ecc71;border:1px solid rgba(46,204,113,0.3);}
+.bs.warn{color:var(--gold-b);border:1px solid var(--gold-dim);}
+.bs.run{color:var(--cyan);border:1px solid rgba(0,212,255,0.25);animation:brun 0.5s infinite;}
+@keyframes brun{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* Shell */
+.shell{position:relative;z-index:10;flex:1;display:flex;flex-direction:column;padding:14px 18px;gap:12px;max-width:820px;width:100%;margin:0 auto;}
+
+/* Header */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:11px 20px;background:var(--panel);border:1px solid var(--border);border-radius:10px;backdrop-filter:blur(12px);}
+.logo-group{display:flex;align-items:center;gap:14px;}
+.reactor{width:44px;height:44px;flex-shrink:0;}
+.title-main{font-family:'Orbitron',monospace;font-size:1.25rem;font-weight:700;color:var(--gold-b);letter-spacing:5px;text-shadow:0 0 14px var(--gold-glow);}
+.title-sub{font-family:'Share Tech Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:3px;margin-top:2px;}
+.topbar-right{display:flex;align-items:center;gap:16px;}
+.sys-dot{width:7px;height:7px;border-radius:50%;background:var(--gold-b);box-shadow:0 0 8px var(--gold-glow);animation:pdot 2s infinite;flex-shrink:0;}
+@keyframes pdot{0%,100%{opacity:1}50%{opacity:0.35}}
+.status-txt{font-family:'Share Tech Mono',monospace;font-size:0.72rem;color:var(--muted);}
+.clock{font-family:'Orbitron',monospace;font-size:1rem;color:var(--gold-b);text-shadow:0 0 8px var(--gold-glow);letter-spacing:2px;}
+
+/* Voice settings bar */
+.voice-bar{display:flex;align-items:center;gap:10px;padding:9px 16px;background:var(--panel);border:1px solid var(--border);border-radius:8px;backdrop-filter:blur(10px);flex-wrap:wrap;}
+.vb-label{font-family:'Share Tech Mono',monospace;font-size:0.62rem;color:var(--muted);letter-spacing:2px;white-space:nowrap;}
+.vb-sel{background:rgba(0,0,0,0.4);border:1px solid var(--border);color:var(--gold-b);padding:4px 8px;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:0.65rem;outline:none;cursor:pointer;max-width:160px;}
+.vb-sel option{background:#07090f;}
+.vb-range{-webkit-appearance:none;height:3px;background:rgba(200,150,12,0.18);border-radius:2px;outline:none;width:80px;cursor:pointer;}
+.vb-range::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:var(--gold-b);border-radius:50%;box-shadow:0 0 6px var(--gold-glow);}
+.vb-val{font-family:'Share Tech Mono',monospace;font-size:0.65rem;color:var(--gold-b);min-width:22px;}
+.vb-div{width:1px;height:18px;background:var(--border);flex-shrink:0;}
+
+/* Chat panel */
+.chat-panel{flex:1;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--border);border-radius:10px;backdrop-filter:blur(10px);overflow:hidden;min-height:0;}
+.chat-hdr{padding:10px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.chat-title{font-family:'Orbitron',monospace;font-size:0.8rem;color:var(--gold);letter-spacing:3px;}
+.chat-btns{display:flex;gap:8px;}
+.hbtn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:0.62rem;letter-spacing:1px;transition:all 0.2s;text-transform:uppercase;}
+.hbtn:hover{border-color:var(--gold-dim);color:var(--gold-b);}
+
+/* Waveform */
+.wave-wrap{padding:8px 18px 0;display:flex;align-items:flex-end;justify-content:center;gap:3px;height:36px;flex-shrink:0;}
+.wbar{width:4px;height:3px;background:var(--gold-dim);border-radius:3px;transition:height 0.07s ease;border:none;}
+.wbar.lit{background:var(--gold-b);}
+
+.errbar{margin:0 14px;padding:7px 12px;background:rgba(192,57,43,0.1);border:1px solid rgba(192,57,43,0.25);border-radius:5px;font-family:'Share Tech Mono',monospace;font-size:0.68rem;color:#e74c3c;display:none;}
+.errbar.on{display:block;}
+
+/* Messages */
+.messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth;}
+.messages::-webkit-scrollbar{width:4px;}
+.messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.msg{max-width:86%;display:flex;flex-direction:column;gap:3px;animation:min 0.22s ease;}
+@keyframes min{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+.msg.user{align-self:flex-end;}
+.msg.jarvis{align-self:flex-start;}
+.msg-meta{font-family:'Share Tech Mono',monospace;font-size:0.58rem;letter-spacing:1.5px;color:var(--muted);}
+.msg.user .msg-meta{text-align:right;color:rgba(0,212,255,0.4);}
+.msg.jarvis .msg-meta{color:rgba(200,150,12,0.45);}
+.bubble{padding:11px 15px;border-radius:8px;font-size:0.88rem;line-height:1.65;word-wrap:break-word;}
+.msg.user .bubble{background:var(--cyan-dim);border:1px solid rgba(0,212,255,0.18);border-radius:8px 8px 2px 8px;}
+.msg.jarvis .bubble{background:rgba(200,150,12,0.05);border:1px solid var(--border);border-radius:8px 8px 8px 2px;}
+.bubble strong{color:var(--gold-b);}
+.bubble em{color:var(--cyan);font-style:italic;}
+.bubble code{background:rgba(0,0,0,0.45);border:1px solid rgba(200,150,12,0.18);border-radius:3px;padding:1px 5px;font-family:'Share Tech Mono',monospace;font-size:0.8rem;color:var(--gold-b);}
+.bubble pre{background:rgba(0,0,0,0.5);border:1px solid rgba(200,150,12,0.12);border-radius:5px;padding:10px;margin:7px 0;overflow-x:auto;}
+.bubble pre code{background:none;border:none;padding:0;}
+.bubble p{margin:5px 0;}
+.bubble p:first-child{margin-top:0;}
+.bubble p:last-child{margin-bottom:0;}
+.bubble ul,.bubble ol{padding-left:16px;margin:5px 0;}
+.bubble li{margin:2px 0;}
+.bubble h1,.bubble h2,.bubble h3{font-family:'Orbitron',monospace;color:var(--gold);margin:8px 0 5px;font-size:0.85rem;font-weight:700;letter-spacing:2px;}
+.bubble blockquote{border-left:2px solid var(--gold);padding-left:10px;margin:7px 0;color:var(--muted);font-style:italic;}
+
+/* Typing */
+.tdots{display:inline-flex;gap:4px;padding:4px 0;}
+.tdot{width:7px;height:7px;border-radius:50%;background:var(--gold-dim);animation:tb 1.2s infinite ease-in-out;}
+.tdot:nth-child(2){animation-delay:0.18s;}
+.tdot:nth-child(3){animation-delay:0.36s;}
+@keyframes tb{0%,80%,100%{transform:scale(0);opacity:0.4}40%{transform:scale(1);opacity:1}}
+.cursor{display:inline-block;width:7px;height:13px;background:var(--gold);margin-left:2px;vertical-align:middle;animation:bc 0.65s step-end infinite;}
+@keyframes bc{0%,100%{opacity:1}50%{opacity:0}}
+
+/* Input */
+.input-area{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0;}
+.chat-input{flex:1;background:rgba(0,0,0,0.35);border:1px solid rgba(200,150,12,0.17);border-radius:6px;padding:9px 13px;color:var(--text);font-family:'Inter',sans-serif;font-size:0.88rem;outline:none;transition:all 0.2s;}
+.chat-input:focus{border-color:var(--gold);box-shadow:0 0 10px rgba(200,150,12,0.12);}
+.chat-input::placeholder{color:var(--muted);}
+.chat-input:disabled{opacity:0.35;cursor:not-allowed;}
+.mic-btn,.send-btn{width:38px;height:38px;border-radius:50%;border:1.5px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.22s;flex-shrink:0;}
+.mic-btn:hover,.send-btn:hover{border-color:var(--gold);color:var(--gold-b);box-shadow:0 0 12px var(--gold-dim);}
+.mic-btn.on{border-color:var(--red);color:#fff;background:rgba(192,57,43,0.22);animation:mon 0.9s infinite;}
+@keyframes mon{0%,100%{box-shadow:0 0 8px rgba(192,57,43,0.4)}50%{box-shadow:0 0 20px rgba(192,57,43,0.8)}}
+.send-btn{border-color:var(--gold-dim);color:var(--gold);}
+.send-btn:disabled{opacity:0.3;cursor:not-allowed;}
+
+/* Quick cmds */
+.qrow{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 10px;flex-shrink:0;}
+.qbtn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:0.62rem;letter-spacing:1px;transition:all 0.18s;white-space:nowrap;}
+.qbtn:hover{border-color:var(--gold);color:var(--gold-b);background:var(--gold-dim);}
+</style>
+</head>
+<body>
+<div class="hex-bg"></div>
+<div class="scanlines"></div>
+<div class="bracket tl"></div><div class="bracket tr"></div>
+<div class="bracket bl"></div><div class="bracket br"></div>
+
+<!-- BOOT -->
+<div id="boot">
+  <div class="boot-logo">J.A.R.V.I.S.</div>
+  <div class="boot-sub">Just A Rather Very Intelligent System</div>
+  <div class="boot-track"><div class="boot-bar" id="bootBar"></div></div>
+  <div class="boot-log" id="bootLog"></div>
+</div>
+
+<!-- SHELL -->
+<div class="shell">
+
+  <!-- HEADER -->
+  <div class="topbar">
+    <div class="logo-group">
+      <svg class="reactor" viewBox="0 0 44 44">
+        <defs><filter id="gf2"><feGaussianBlur stdDeviation="1.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+        <circle cx="22" cy="22" r="20" fill="none" stroke="rgba(200,150,12,0.18)" stroke-width="1"/>
+        <circle cx="22" cy="22" r="15" fill="none" stroke="rgba(200,150,12,0.28)" stroke-width="1"/>
+        <circle cx="22" cy="22" r="9" fill="rgba(200,150,12,0.05)" stroke="rgba(240,180,41,0.55)" stroke-width="1.2" filter="url(#gf2)"/>
+        <g id="spokes">
+          <line x1="22" y1="7" x2="22" y2="13" stroke="var(--gold)" stroke-width="1.1" stroke-linecap="round"/>
+          <line x1="22" y1="31" x2="22" y2="37" stroke="var(--gold)" stroke-width="1.1" stroke-linecap="round"/>
+          <line x1="7" y1="22" x2="13" y2="22" stroke="var(--gold)" stroke-width="1.1" stroke-linecap="round"/>
+          <line x1="31" y1="22" x2="37" y2="22" stroke="var(--gold)" stroke-width="1.1" stroke-linecap="round"/>
+          <line x1="10.5" y1="10.5" x2="14.8" y2="14.8" stroke="var(--gold)" stroke-width="0.9" stroke-linecap="round"/>
+          <line x1="33.5" y1="10.5" x2="29.2" y2="14.8" stroke="var(--gold)" stroke-width="0.9" stroke-linecap="round"/>
+          <line x1="10.5" y1="33.5" x2="14.8" y2="29.2" stroke="var(--gold)" stroke-width="0.9" stroke-linecap="round"/>
+          <line x1="33.5" y1="33.5" x2="29.2" y2="29.2" stroke="var(--gold)" stroke-width="0.9" stroke-linecap="round"/>
+        </g>
+        <circle cx="22" cy="22" r="4.5" fill="var(--gold-b)" filter="url(#gf2)" id="core"/>
+      </svg>
+      <div>
+        <div class="title-main">J.A.R.V.I.S.</div>
+        <div class="title-sub">Stark Industries · Personal AI</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="sys-dot" id="statusDot"></div>
+        <span class="status-txt" id="statusTxt">ONLINE</span>
+      </div>
+      <div class="clock" id="clock">00:00:00</div>
+    </div>
+  </div>
+
+  <!-- VOICE SETTINGS -->
+  <div class="voice-bar">
+    <span class="vb-label">Voice</span>
+    <select class="vb-sel" id="voiceSel" onchange="pickVoice()"><option value="">Default</option></select>
+    <div class="vb-div"></div>
+    <span class="vb-label">Rate</span>
+    <input type="range" class="vb-range" id="rateR" min="0.5" max="2" step="0.1" value="0.95" oninput="document.getElementById('rateV').textContent=parseFloat(this.value).toFixed(1)">
+    <span class="vb-val" id="rateV">1.0</span>
+    <div class="vb-div"></div>
+    <span class="vb-label">Pitch</span>
+    <input type="range" class="vb-range" id="pitchR" min="0.5" max="2" step="0.1" value="1" oninput="document.getElementById('pitchV').textContent=parseFloat(this.value).toFixed(1)">
+    <span class="vb-val" id="pitchV">1.0</span>
+    <div class="vb-div"></div>
+    <span class="vb-label">Vol</span>
+    <input type="range" class="vb-range" id="volR" min="0" max="1" step="0.1" value="1" oninput="document.getElementById('volV').textContent=parseFloat(this.value).toFixed(1)">
+    <span class="vb-val" id="volV">1.0</span>
+  </div>
+
+  <!-- CHAT -->
+  <div class="chat-panel">
+    <div class="chat-hdr">
+      <div class="chat-title">Interface Console</div>
+      <div class="chat-btns">
+        <button class="hbtn" id="voiceToggle" onclick="toggleVoice()">Voice: ON</button>
+        <button class="hbtn" onclick="clearChat()">Clear</button>
+      </div>
+    </div>
+    <div class="wave-wrap" id="waveWrap"></div>
+    <div class="errbar" id="errBar"></div>
+    <div class="messages" id="messages">
+      <div class="msg jarvis">
+        <div class="msg-meta">J.A.R.V.I.S. · BOOT</div>
+        <div class="bubble">Welcome, sir. All systems nominal. How may I be of service?</div>
+      </div>
+    </div>
+    <div class="qrow">
+      <button class="qbtn" onclick="quick('What time and date is it?')">Time</button>
+      <button class="qbtn" onclick="quick('Tell me about Tony Stark\'s arc reactor')">Arc Reactor</button>
+      <button class="qbtn" onclick="quick('Write a quick Python Fibonacci function')">Code</button>
+      <button class="qbtn" onclick="quick('Tell me a dry British joke')">Joke</button>
+      <button class="qbtn" onclick="quick('What are the biggest AI developments in 2026?')">AI News</button>
+      <button class="qbtn" onclick="quick('Run a systems diagnostic report')">Diagnostic</button>
+    </div>
+    <div class="input-area">
+      <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="Voice input">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </button>
+      <input class="chat-input" id="chatInput" placeholder="Enter command or speak, sir…" onkeydown="if(event.key==='Enter')sendMsg()">
+      <button class="send-btn" id="sendBtn" onclick="sendMsg()">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const S={
+  history:[],voiceOn:true,listening:false,processing:false,
+  startTime:Date.now(),synth:window.speechSynthesis,
+  recognition:null,voices:[],selVoice:null,waveTimer:null,
+  currentUtterance:null,
+};
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+const BOOT=[
+  {p:12,t:'Power core initializing…',s:'run'},
+  {p:26,t:'Personality matrix loaded',s:'ok'},
+  {p:42,t:'Connecting to Claude network…',s:'run'},
+  {p:58,t:'Neural link established',s:'ok'},
+  {p:70,t:'Voice synthesis calibrated',s:'ok'},
+  {p:84,t:'Loading user preferences',s:'warn'},
+  {p:100,t:'All systems nominal. Welcome, sir.',s:'ok'},
+];
+async function runBoot(){
+  const bar=document.getElementById('bootBar'),log=document.getElementById('bootLog');
+  for(const step of BOOT){
+    bar.style.width=step.p+'%';
+    const r=document.createElement('div');r.className='blog-row';
+    r.innerHTML=`<span class="bs ${step.s}">${step.s.toUpperCase()}</span><span>${step.t}</span>`;
+    log.appendChild(r);log.scrollTop=log.scrollHeight;
+    await sleep(300);
+  }
+  await sleep(380);
+  document.getElementById('boot').classList.add('gone');
+  initAll();
+  // Speak greeting after a short delay to allow audio context
+  setTimeout(()=>speak("Welcome, sir. All systems nominal. How may I be of service?"),600);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function initAll(){
+  buildWave();
+  animateReactor();
+  setInterval(()=>{
+    document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-US',{hour12:false});
+  },1000);
+  loadVoices();
+  if(S.synth.onvoiceschanged!==undefined) S.synth.onvoiceschanged=loadVoices;
+  initRecognition();
+}
+
+// ── Voice list ────────────────────────────────────────────────────────────────
+function loadVoices(){
+  S.voices=S.synth.getVoices();
+  const sel=document.getElementById('voiceSel');
+  sel.innerHTML='<option value="">Auto-select</option>';
+  S.voices.forEach((v,i)=>{
+    const o=document.createElement('option');
+    o.value=i;o.textContent=v.name.substring(0,22)+' ('+v.lang+')';
+    sel.appendChild(o);
+  });
+  // auto-pick: British English male preferred for JARVIS
+  S.selVoice=
+    S.voices.find(v=>v.lang==='en-GB'&&(v.name.includes('Daniel')||v.name.includes('Male')))||
+    S.voices.find(v=>v.lang==='en-GB')||
+    S.voices.find(v=>v.name.includes('Daniel')||v.name.includes('David'))||
+    S.voices.find(v=>v.lang.startsWith('en'))||
+    null;
+}
+function pickVoice(){
+  const v=document.getElementById('voiceSel').value;
+  S.selVoice=v===''?null:S.voices[parseInt(v)];
+}
+
+// ── TTS speak ─────────────────────────────────────────────────────────────────
+function speak(text){
+  if(!S.voiceOn||!S.synth) return;
+  S.synth.cancel();
+  const plain=text.replace(/[#*`_~\[\]>]/g,'').replace(/\n+/g,' ').trim();
+  const u=new SpeechSynthesisUtterance(plain);
+  u.rate=parseFloat(document.getElementById('rateR').value);
+  u.pitch=parseFloat(document.getElementById('pitchR').value);
+  u.volume=parseFloat(document.getElementById('volR').value);
+  if(S.selVoice) u.voice=S.selVoice;
+  u.onstart=()=>{
+    S.waveTimer=setInterval(()=>pulseWave(true),80);
+    setStatusDot('speaking');
+  };
+  u.onend=u.onerror=()=>{
+    clearInterval(S.waveTimer);pulseWave(false);
+    setStatusDot('online');
+  };
+  S.currentUtterance=u;
+  // Small delay ensures browser audio context is ready
+  setTimeout(()=>S.synth.speak(u),50);
+}
+
+function toggleVoice(){
+  S.voiceOn=!S.voiceOn;
+  const btn=document.getElementById('voiceToggle');
+  btn.textContent='Voice: '+(S.voiceOn?'ON':'OFF');
+  if(!S.voiceOn){S.synth.cancel();clearInterval(S.waveTimer);pulseWave(false);}
+}
+
+// ── Speech recognition ────────────────────────────────────────────────────────
+function initRecognition(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR) return;
+  S.recognition=new SR();
+  S.recognition.continuous=false;S.recognition.interimResults=false;S.recognition.lang='en-US';
+  S.recognition.onstart=()=>{S.listening=true;document.getElementById('micBtn').classList.add('on');setStatusDot('listening');};
+  S.recognition.onend=()=>{S.listening=false;document.getElementById('micBtn').classList.remove('on');setStatusDot('online');};
+  S.recognition.onresult=e=>{const t=e.results[0][0].transcript;document.getElementById('chatInput').value=t;sendMsg();};
+  S.recognition.onerror=e=>{if(e.error!=='aborted')showErr('Mic error: '+e.error);S.listening=false;document.getElementById('micBtn').classList.remove('on');setStatusDot('online');};
+}
+function toggleMic(){
+  if(!S.recognition){showErr('Speech recognition unavailable — please type your command, sir.');return;}
+  S.synth.cancel();clearInterval(S.waveTimer);pulseWave(false);
+  if(S.listening){
+    S.recognition.stop();
+  } else {
+    try{ S.recognition.start(); }
+    catch(e){ /* already started — ignore */ }
+  }
+}
+
+// ── Claude API ────────────────────────────────────────────────────────────────
+async function callClaude(userMsg){
+  const msgs=[...S.history,{role:'user',content:userMsg}];
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-6',
+      max_tokens:1024,
+      system:`You are J.A.R.V.I.S. — Just A Rather Very Intelligent System, Tony Stark's sophisticated AI from Iron Man. Speak with British wit, precision, and warmth. Always address the user as "sir" or "madam". Be concise but thorough. Never break character.`,
+      messages:msgs
+    })
+  });
+  if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`HTTP ${res.status}`);}
+  const data=await res.json();
+  return data.content?.[0]?.text||'';
+}
+
+// ── Send message ──────────────────────────────────────────────────────────────
+async function sendMsg(){
+  const input=document.getElementById('chatInput');
+  const text=input.value.trim();
+  if(!text||S.processing) return;
+  input.value='';
+  // Stop any current speech before responding
+  S.synth.cancel();
+
+  addUserMsg(text);
+  S.history.push({role:'user',content:text});
+  setBusy(true);showTyping();
+
+  try{
+    const reply=await callClaude(text);
+    hideTyping();
+    await streamMsg(reply);
+    S.history.push({role:'assistant',content:reply});
+    if(S.voiceOn) speak(reply);
+  }catch(err){
+    hideTyping();
+    const fb=localFallback(text);
+    await streamMsg(fb);
+    showErr('Neural link error: '+err.message+' — local fallback active.');
+    if(S.voiceOn) speak(fb);
+  }finally{setBusy(false);}
+}
+
+// ── Stream words ──────────────────────────────────────────────────────────────
+async function streamMsg(text){
+  const wrap=document.createElement('div');wrap.className='msg jarvis';
+  const meta=document.createElement('div');meta.className='msg-meta';
+  meta.textContent='J.A.R.V.I.S. · '+new Date().toLocaleTimeString('en-US',{hour12:false});
+  const bub=document.createElement('div');bub.className='bubble';
+  const cur=document.createElement('span');cur.className='cursor';
+  wrap.appendChild(meta);wrap.appendChild(bub);bub.appendChild(cur);
+  const msgs=document.getElementById('messages');
+  msgs.appendChild(wrap);msgs.scrollTop=msgs.scrollHeight;
+
+  const words=text.split(' ');let built='';
+  for(let i=0;i<words.length;i++){
+    built+=(i===0?'':' ')+words[i];
+    bub.innerHTML=fmtMd(built);
+    bub.appendChild(cur);
+    msgs.scrollTop=msgs.scrollHeight;
+    await sleep(16+Math.random()*20);
+  }
+  cur.remove();bub.innerHTML=fmtMd(text);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function addUserMsg(text){
+  const wrap=document.createElement('div');wrap.className='msg user';
+  const meta=document.createElement('div');meta.className='msg-meta';
+  meta.textContent='SIR · '+new Date().toLocaleTimeString('en-US',{hour12:false});
+  const bub=document.createElement('div');bub.className='bubble';bub.innerHTML=fmtMd(text);
+  wrap.appendChild(meta);wrap.appendChild(bub);
+  const msgs=document.getElementById('messages');
+  msgs.appendChild(wrap);msgs.scrollTop=msgs.scrollHeight;
+}
+
+// ── Markdown ──────────────────────────────────────────────────────────────────
+function fmtMd(t){
+  let h=t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  h=h.replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>');
+  h=h.replace(/`([^`]+)`/g,'<code>$1</code>');
+  h=h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  h=h.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  h=h.replace(/^### (.+)$/gm,'<h3>$1</h3>');
+  h=h.replace(/^## (.+)$/gm,'<h2>$1</h2>');
+  h=h.replace(/^# (.+)$/gm,'<h1>$1</h1>');
+  h=h.replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>');
+  h=h.replace(/^\* (.+)$/gm,'<li>$1</li>');
+  h=h.replace(/(<li>[\s\S]*?<\/li>)/g,'<ul>$1</ul>');
+  h=h.replace(/\n\n/g,'</p><p>');h=h.replace(/\n/g,'<br>');
+  if(!h.match(/^<[hpublo]/)) h='<p>'+h+'</p>';
+  return h;
+}
+
+// ── Local fallback ────────────────────────────────────────────────────────────
+function localFallback(t){
+  const l=t.toLowerCase();
+  if(l.includes('time')||l.includes('date'))
+    return `The current time is **${new Date().toLocaleTimeString()}**, sir. Today is **${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}**.`;
+  if(l.includes('joke'))
+    return "Why did the robot go on vacation? It needed to reboot. Much like yourself after board meetings, sir, if I may say so.";
+  if(l.includes('diagnostic')||l.includes('status'))
+    return `Diagnostic complete, sir.\n\n**Voice Synthesis:** Nominal\n**Neural Link:** Degraded (local mode)\n**Arc Reactor:** Optimal\n**Threat Assessment:** None detected`;
+  if(l.includes('iron man')||l.includes('tony')||l.includes('stark'))
+    return "Mr. Stark was, without question, the most brilliant mind I had the privilege of assisting. His arc reactor redefined clean energy. I miss him, sir.";
+  return "I am currently running on local heuristics, sir. The neural link to the Claude inference network is momentarily disrupted. For full capabilities, connectivity must be restored.";
+}
+
+// ── Typing indicator ──────────────────────────────────────────────────────────
+function showTyping(){
+  const msgs=document.getElementById('messages');
+  const w=document.createElement('div');w.className='msg jarvis';w.id='typing';
+  const meta=document.createElement('div');meta.className='msg-meta';meta.textContent='J.A.R.V.I.S. · processing…';
+  const b=document.createElement('div');b.className='bubble';
+  b.innerHTML='<div class="tdots"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div>';
+  w.appendChild(meta);w.appendChild(b);msgs.appendChild(w);msgs.scrollTop=99999;
+}
+function hideTyping(){document.getElementById('typing')?.remove();}
+
+// ── Waveform ──────────────────────────────────────────────────────────────────
+function buildWave(){
+  const wrap=document.getElementById('waveWrap');
+  for(let i=0;i<22;i++){
+    const b=document.createElement('div');b.className='wbar';b.id='wb'+i;wrap.appendChild(b);
+  }
+}
+function pulseWave(active){
+  for(let i=0;i<22;i++){
+    const el=document.getElementById('wb'+i);if(!el) continue;
+    if(active){el.style.height=(4+Math.random()*26)+'px';el.classList.add('lit');}
+    else{el.style.height='3px';el.classList.remove('lit');}
+  }
+}
+
+// ── Reactor animation ─────────────────────────────────────────────────────────
+let rAngle=0;
+function animateReactor(){
+  rAngle+=0.5;
+  document.getElementById('spokes').setAttribute('transform',`rotate(${rAngle},22,22)`);
+  requestAnimationFrame(animateReactor);
+}
+
+// ── Status dot ────────────────────────────────────────────────────────────────
+function setStatusDot(state){
+  const dot=document.getElementById('statusDot');
+  const txt=document.getElementById('statusTxt');
+  const states={online:{c:'var(--gold-b)',t:'ONLINE'},listening:{c:'var(--red)',t:'LISTENING'},speaking:{c:'var(--cyan)',t:'SPEAKING'},processing:{c:'rgba(200,150,12,0.5)',t:'PROCESSING'}};
+  const s=states[state]||states.online;
+  dot.style.background=s.c;dot.style.boxShadow=`0 0 8px ${s.c}`;
+  txt.textContent=s.t;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setBusy(on){
+  S.processing=on;
+  document.getElementById('chatInput').disabled=on;
+  document.getElementById('sendBtn').disabled=on;
+  setStatusDot(on?'processing':'online');
+}
+function showErr(msg){
+  const b=document.getElementById('errBar');b.textContent=msg;b.classList.add('on');
+  setTimeout(()=>b.classList.remove('on'),9000);
+}
+function clearChat(){
+  S.synth.cancel();S.history=[];
+  document.getElementById('messages').innerHTML='';
+  addUserMsg&&void 0;
+  const w=document.createElement('div');w.className='msg jarvis';
+  const m=document.createElement('div');m.className='msg-meta';m.textContent='J.A.R.V.I.S. · RESET';
+  const b=document.createElement('div');b.className='bubble';b.textContent='Console cleared, sir. Awaiting your command.';
+  w.appendChild(m);w.appendChild(b);document.getElementById('messages').appendChild(w);
+  speak('Console cleared, sir. Awaiting your command.');
+}
+function quick(t){document.getElementById('chatInput').value=t;sendMsg();}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+document.addEventListener('DOMContentLoaded',()=>runBoot());
+</script>
+</body>
+</html>
